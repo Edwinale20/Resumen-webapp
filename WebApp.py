@@ -3,15 +3,27 @@ import plotly.express as px
 import streamlit as st
 
 # emojis: https://www.webfx.com/tools/emoji-cheat-sheet/
-st.set_page_config(page_title="Police Incident Dashboard", page_icon=":police_car:", layout="wide")
+st.set_page_config(page_title="Police Incident Dashboard in San Francisco", page_icon=":police_car:", layout="wide")
 
-# ---- READ CSV ----
+# ---- READ Excel ----
 @st.cache_data
-def get_data_from_csv():
-    df = pd.read_csv("SanFrancisco_Police.csv")
+def get_data_from_xlsx():
+    df_incidents = pd.read_excel("SF_Incidents.xlsx")
+    df_coordinates = pd.read_excel("SF_Coordinates.xlsx")
+    df_crimes = pd.read_excel("SF_Crimes.xlsx")
+    df_dates = pd.read_excel("SF_Dates.xlsx")
+    df_resolution = pd.read_excel("SF_Resolution.xlsx")
+    
+    # Combine los DataFrames en uno solo utilizando el método merge
+    df = pd.merge(df_incidents, df_coordinates, on="Incident ID")
+    df = pd.merge(df, df_crimes, on="Incident ID")
+    df = pd.merge(df, df_dates, on="Incident ID")
+    df = pd.merge(df, df_resolution, on="Incident ID")
+    
     return df
 
-df = get_data_from_csv()
+df = get_data_from_xlsx()
+
 
 # ---- SIDEBAR ----
 st.sidebar.header("Please Filter Here:")
@@ -33,7 +45,6 @@ st.title(":police_car: Police Incident Dashboard")
 st.markdown("##")
 
 # TOP KPI's
-# Agrega aquí tus KPI's personalizados
 
 # Gráfico 1: Incident by Day of Week [BAR CHART]
 incidents_by_day = filtered_df["Incident Day of Week"].value_counts().reset_index()
@@ -42,7 +53,7 @@ fig_day_of_week = px.bar(incidents_by_day, x="Day of Week", y="Incident Count", 
 fig_day_of_week.update_layout(xaxis={"categoryorder":"total descending"})
 
 # Gráfico 2: Incident by Hour [BAR CHART]
-filtered_df.loc[:, "Incident Hour"] = pd.to_datetime(filtered_df["Incident Time"]).dt.hour
+filtered_df["Incident Hour"] = pd.to_datetime(filtered_df["Incident Time"].apply(lambda x: x.strftime("2000-01-01 %H:%M:%S")), format="%Y-%m-%d %H:%M:%S").dt.hour
 incidents_by_hour = filtered_df["Incident Hour"].value_counts().reset_index()
 incidents_by_hour.columns = ["Hour", "Incident Count"]
 fig_hour_of_day = px.bar(incidents_by_hour, x="Hour", y="Incident Count", title="Incidents by Hour of Day")
@@ -67,7 +78,7 @@ fig_neighborhood.update_layout(xaxis={"categoryorder":"total descending"})
 
 # Gráfico 6: Mapa de incidentes
 fig_map = px.scatter_mapbox(filtered_df, lat='Latitude', lon='Longitude', hover_name='Incident Description',
-                            title='Mapa de incidentes en San Francisco')
+                            title='San Francisco Incident Map')
 fig_map.update_layout(mapbox_style='open-street-map')
 
 # Mostrar los gráficos en la página principal
